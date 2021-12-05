@@ -44,9 +44,9 @@ func DiagonalPair(p PlotPair) bool {
 }
 
 func ConvertLineIntoPlotPair(input string) PlotPair {
-	parts := strings.Split(input, " ")
-	y1, x1 := SplitStringIntoCoords(parts[0])
-	y2, x2 := SplitStringIntoCoords(parts[2])
+	var x1, y1, x2, y2 int
+	_, err := fmt.Sscanf(input, "%d,%d -> %d,%d", &x1, &y1, &x2, &y2)
+	Check(err)
 	var pair PlotPair
 	if x1 <= x2 {
 		pair = PlotPair{x1, x2, y1, y2}
