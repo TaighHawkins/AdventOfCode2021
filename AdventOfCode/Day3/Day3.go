@@ -10,14 +10,11 @@ import (
 )
 
 func main() {
+
 	inputName := flag.String("input", "input.txt", "The input file to work with")
 	flag.Parse()
-
 	start := time.Now()
-	rawinput, fileError := os.ReadFile(DereferenceStringPointer(inputName))
-	Check(fileError)
-	stringArray := strings.FieldsFunc(string(rawinput), RemoveEmptyValues)
-
+	stringArray := GetStringFromInput(DereferenceStringPointer(inputName))
 	oneCounts, halfLines := GetAllOneCounts(stringArray)
 	gammaRateBits, epsilonBits := ExtractBits(oneCounts, halfLines)
 	gammaRate := ConvertStringBitsToInt(gammaRateBits)
@@ -36,6 +33,14 @@ func main() {
 	timeTaken := time.Since(start)
 	fmt.Printf("Process took %s", timeTaken)
 	fmt.Scanf("h")
+}
+
+func GetStringFromInput(inputPath string) []string {
+
+	rawinput, fileError := os.ReadFile(inputPath)
+	Check(fileError)
+	return strings.FieldsFunc(string(rawinput), RemoveEmptyValues)
+
 }
 
 func ReduceToFinalEntryBasedOnCriteria(input []string, criteria func([]string, []int, int) []string) string {
