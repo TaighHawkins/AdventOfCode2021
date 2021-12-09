@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -54,15 +53,6 @@ func ConvertLineIntoPlotPair(input string) PlotPair {
 		pair = PlotPair{x2, x1, y2, y1}
 	}
 	return pair
-}
-
-func SplitStringIntoCoords(input string) (int, int) {
-	split := strings.Split(input, ",")
-	x, xerror := strconv.Atoi(split[0])
-	y, yerror := strconv.Atoi(split[1])
-	Check(xerror)
-	Check(yerror)
-	return x, y
 }
 
 type PlotGrid struct {
