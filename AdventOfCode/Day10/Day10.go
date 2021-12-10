@@ -9,6 +9,29 @@ import (
 	"time"
 )
 
+var (
+	syntaxScoreMap     = make(map[rune]int)
+	completionScoreMap = make(map[rune]int)
+	pairMap            = make(map[rune]rune)
+)
+
+func init() {
+	syntaxScoreMap[')'] = 3
+	syntaxScoreMap[']'] = 57
+	syntaxScoreMap['}'] = 1197
+	syntaxScoreMap['>'] = 25137
+
+	completionScoreMap[')'] = 1
+	completionScoreMap[']'] = 2
+	completionScoreMap['}'] = 3
+	completionScoreMap['>'] = 4
+
+	pairMap['('] = ')'
+	pairMap['['] = ']'
+	pairMap['{'] = '}'
+	pairMap['<'] = '>'
+}
+
 func main() {
 
 	inputName := flag.String("input", "input.txt", "The input file to work with")
@@ -33,14 +56,8 @@ func main() {
 
 func ScoreErrors(i []rune) int {
 	score := 0
-	scoreMap := map[rune]int{
-		')': 3,
-		']': 57,
-		'}': 1197,
-		'>': 25137,
-	}
 	for _, r := range i {
-		score += scoreMap[r]
+		score += syntaxScoreMap[r]
 	}
 	return score
 }
@@ -88,17 +105,12 @@ func CompleteAppropriateLines(input []string, ch chan string) []string {
 
 func ScoreCompletions(i []string) int {
 	scores := make([]int, len(i))
-	scoreMap := map[rune]int{
-		')': 1,
-		']': 2,
-		'}': 3,
-		'>': 4,
-	}
+
 	for ii, s := range i {
 		score := 0
 		for _, r := range s {
 			score *= 5
-			score += scoreMap[r]
+			score += completionScoreMap[r]
 		}
 		scores[ii] = score
 	}
@@ -145,12 +157,6 @@ func IsClosingBrace(r, x rune) bool {
 }
 
 func GetClosingPair(r rune) (rune, bool) {
-	pairMap := map[rune]rune{
-		'(': ')',
-		'[': ']',
-		'{': '}',
-		'<': '>',
-	}
 	v, ok := pairMap[r]
 	return v, ok
 }
