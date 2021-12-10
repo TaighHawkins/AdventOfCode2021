@@ -116,7 +116,25 @@ func (b *BingoValue) Mark() {
 func (b *BingoBoard) GetAndPrintBoardValue(label string) {
 	value, e := b.GetBoardValue()
 	Check(e)
+	b.PrintBoard(label)
 	fmt.Printf("%s Winning board value is %d\n", label, value*b.WinningNumber)
+}
+
+func (b *BingoBoard) PrintBoard(label string) {
+	fmt.Printf("The %s winning board is:\n", label)
+	for _, row := range b.Values {
+		for _, v := range row {
+			fmt.Printf(" %02d ", v.Value)
+		}
+		fmt.Println("")
+		for _, v := range row {
+			if v.Marked {
+				fmt.Print("  x ")
+			}
+		}
+		fmt.Println("")
+	}
+	fmt.Println("")
 }
 
 func (b *BingoBoard) Populateboard(input []string) {
