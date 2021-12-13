@@ -36,9 +36,9 @@ func main() {
 		if ii == 99 {
 			flashesAt100 = flashCount
 		}
-		if ii > 275 {
-			PrintGrid(grid)
-		}
+		// if ii > 275 {
+		// 	PrintGrid(grid)
+		// }
 		count = ii
 	}
 	fmt.Printf("The total number of flashes at count 100 is is %d\n", flashesAt100)

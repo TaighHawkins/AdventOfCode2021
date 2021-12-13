@@ -6,14 +6,24 @@ import (
 	"os"
 	"strings"
 	"time"
+	"unicode"
 )
 
 var (
-	MazeMap map[string][]string
+	Caves      map[string]Cave
+	Solutions2 [][]Cave
 )
 
-func init() {
+type Cave struct {
+	Name       string
+	Big        bool
+	VisitCount int
+	Links      []string
+}
 
+func init() {
+	Caves = make(map[string]Cave)
+	Solutions2 = make([][]Cave, 0)
 }
 
 func main() {
@@ -23,20 +33,13 @@ func main() {
 	start := time.Now()
 	input := GetStringFromInput(DereferenceStringPointer(inputName))
 	ReadMazeMap(input)
+	TraverseCaves([]Cave{Caves["start"]}, map[string]Cave{"start": Caves["start"]}, IsNewPath)
+	fmt.Printf("The number of paths through the maze is %d\n", len(Solutions2))
 
-	var count, flashesAt100 int
-	for ii := 0; !AllOctopoSynced(grid); ii++ {
-		IncrementAndFlashOctopo(&grid)
-		if ii == 99 {
-			flashesAt100 = flashCount
-		}
-		if ii > 275 {
-			PrintGrid(grid)
-		}
-		count = ii
-	}
-	fmt.Printf("The total number of flashes at count 100 is is %d\n", flashesAt100)
-	fmt.Printf("The octopo sync at count %d\n", count+1)
+	Solutions2 = make([][]Cave, 0)
+
+	TraverseCaves([]Cave{Caves["start"]}, map[string]Cave{"start": Caves["start"]}, IsNewCaveOrOnlyOneSmallCaveHasASecondPass)
+	fmt.Printf("The number of paths through the maze allowing small cave revisiting is %d\n", len(Solutions2))
 
 	timeTaken := time.Since(start)
 	fmt.Printf("Process took %s\n", timeTaken)
@@ -46,127 +49,100 @@ func main() {
 func ReadMazeMap(input []string) {
 	for _, v := range input {
 		pair := strings.Split(v, "-")
-		_, onePresent := MazeMap[pair[0]]
-		if onePresent {
-			MazeMap[pair[0]] = append(MazeMap[pair[0]], pair[1])
-		} else {
-			MazeMap[pair[0]] = []string{pair[1]}
-		}
-		_, twoPresent := MazeMap[pair[1]]
-		if twoPresent {
-			MazeMap[pair[1]] = append(MazeMap[pair[1]], pair[0])
-		} else {
-			MazeMap[pair[1]] = []string{pair[0]}
+		UpdateCave(pair[0], pair[1])
+		UpdateCave(pair[1], pair[0])
+	}
+}
+
+func UpdateCave(cave1, cave2 string) {
+	_, onePresent := Caves[cave1]
+	if onePresent {
+		cave := Caves[cave1]
+		cave.Links = append(cave.Links, cave2)
+		Caves[cave1] = cave
+	} else {
+		Caves[cave1] = Cave{cave1, IsUpper(cave1), 0, []string{cave2}}
+	}
+}
+
+func TraverseCaves(path []Cave, caveMap map[string]Cave, condition func([]Cave, map[string]Cave, string) bool) {
+	if path[len(path)-1].Name == "end" {
+		Solutions2 = append(Solutions2, path)
+		return
+	} else if len(path) > 200 {
+		fmt.Printf("Aborting run as depth of 200 hit:\n%v\n", path)
+	}
+
+	for _, v := range Caves[path[len(path)-1].Name].Links {
+		if Caves[v].Big || condition(path, caveMap, v) {
+			cave := Caves[v]
+			caveLookup, present := caveMap[v]
+			if present {
+				caveLookup.VisitCount++
+				caveMap[v] = caveLookup
+			} else {
+				caveMap[v] = cave
+			}
+			nextPath := append(path, cave)
+			TraverseCaves(nextPath, caveMap, condition)
+			if caveMap[v].VisitCount == 0 {
+				delete(caveMap, v)
+			} else {
+				prevCave := caveMap[v]
+				prevCave.VisitCount--
+				caveMap[v] = prevCave
+			}
 		}
 	}
 }
 
-func AllOctopoSynced(grid [][]*DumboOctopus) bool {
+func IsNewPath(p []Cave, cm map[string]Cave, s string) bool {
+	_, present := cm[s]
+	return !present
+}
 
-	for _, row := range grid {
-		for _, o := range row {
-			if o.Power != 0 {
+func IsNewCaveOrOnlyOneSmallCaveHasASecondPass(p []Cave, cm map[string]Cave, s string) bool {
+	if s == "start" {
+		return false
+	}
+
+	v, present := cm[s]
+
+	if !present {
+		return true
+	} else if present && v.VisitCount >= 1 {
+		return false
+	} else if present {
+		for _, value := range cm {
+			if !value.Big && value.VisitCount == 1 {
 				return false
 			}
 		}
 	}
+
 	return true
 }
 
-func IncrementAndFlashOctopo(grid *[][]*DumboOctopus) {
-
-	for _, row := range *grid {
-		for _, o := range row {
-			o.ClearFlashStatus()
-			o.IncrementPower()
-		}
-	}
-
-	// PrintGrid(*grid)
-
-	for _, row := range *grid {
-		for _, o := range row {
-			o.FlashOctopusIfNeeded()
-		}
-	}
-	// PrintGrid(*grid)
+func IsNewPathOrIsLargeCave(path []string, s string) bool {
+	return !IsAlreadyPresent(path, s) || IsUpper(s)
 }
 
-func (o *DumboOctopus) ClearFlashStatus() {
-	o.HasFlashed = false
-}
-
-func (o *DumboOctopus) IncrementPower() {
-	if !o.HasFlashed && o.Power < 10 {
-		o.Power++
-	}
-}
-
-func (o *DumboOctopus) FlashOctopusIfNeeded() {
-	if o.Power == 10 {
-		o.HasFlashed = true
-		o.Power = 0
-		flashCount++
-		for _, v := range o.Neighbours {
-			v.IncrementPower()
-			v.FlashOctopusIfNeeded()
+func IsAlreadyPresent(path []string, s string) bool {
+	for _, v := range path {
+		if s == v {
+			return true
 		}
 	}
+	return false
 }
 
-func CreateOctopusMap(input []string) [][]*DumboOctopus {
-	octopoGrid := make([][]*DumboOctopus, len(input))
-	for ii, row := range input {
-		octopoRow := make([]*DumboOctopus, len(row))
-		for jj, v := range row {
-			octopoRow[jj] = &DumboOctopus{Power: int(v - '0'), HasFlashed: false, Neighbours: make([]*DumboOctopus, 0)}
-		}
-		octopoGrid[ii] = octopoRow
-	}
-
-	UpdateNeighbours(octopoGrid)
-	return octopoGrid
-}
-
-func UpdateNeighbours(grid [][]*DumboOctopus) {
-	for ii, row := range grid {
-		for jj, oct := range row {
-
-			var yMin, yLimit, xMin, xLimit int
-			if ii > 0 {
-				yMin = ii - 1
-			} else {
-				yMin = ii
-			}
-
-			if ii < len(grid)-1 {
-				yLimit = ii + 1
-			} else {
-				yLimit = ii
-			}
-
-			if jj > 0 {
-				xMin = jj - 1
-			} else {
-				xMin = jj
-			}
-
-			if jj < len(row)-1 {
-				xLimit = jj + 1
-			} else {
-				xLimit = jj
-			}
-
-			for kk := yMin; kk <= yLimit; kk++ {
-				for ll := xMin; ll <= xLimit; ll++ {
-					if kk == ii && ll == jj {
-						continue
-					}
-					oct.Neighbours = append(oct.Neighbours, grid[kk][ll])
-				}
-			}
+func IsUpper(s string) bool {
+	for _, r := range s {
+		if !unicode.IsUpper(r) && unicode.IsLetter(r) {
+			return false
 		}
 	}
+	return true
 }
 
 func GetStringFromInput(inputPath string) []string {
