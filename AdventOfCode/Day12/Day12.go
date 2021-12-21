@@ -12,6 +12,7 @@ import (
 var (
 	Caves      map[string]Cave
 	Solutions2 [][]Cave
+	Start      time.Time
 )
 
 type Cave struct {
@@ -24,24 +25,27 @@ type Cave struct {
 func init() {
 	Caves = make(map[string]Cave)
 	Solutions2 = make([][]Cave, 0)
+	Start = time.Now()
 }
+
+// https://www.reddit.com/r/adventofcode/comments/rehj2r/comment/hob126g/?utm_source=share&utm_medium=web2x&context=3
+// Hints for optimisation
 
 func main() {
 
 	inputName := flag.String("input", "input.txt", "The input file to work with")
 	flag.Parse()
-	start := time.Now()
 	input := GetStringFromInput(DereferenceStringPointer(inputName))
 	ReadMazeMap(input)
 	TraverseCaves([]Cave{Caves["start"]}, map[string]Cave{"start": Caves["start"]}, IsNewPath)
-	fmt.Printf("The number of paths through the maze is %d\n", len(Solutions2))
+	fmt.Printf("The number of paths through the maze is %d\nCalculated in %s\n", len(Solutions2), time.Since(Start))
 
 	Solutions2 = make([][]Cave, 0)
 
 	TraverseCaves([]Cave{Caves["start"]}, map[string]Cave{"start": Caves["start"]}, IsNewCaveOrOnlyOneSmallCaveHasASecondPass)
-	fmt.Printf("The number of paths through the maze allowing small cave revisiting is %d\n", len(Solutions2))
+	fmt.Printf("The number of paths through the maze allowing small cave revisiting is %d\nCalculated in %s\n", len(Solutions2), time.Since(Start))
 
-	timeTaken := time.Since(start)
+	timeTaken := time.Since(Start)
 	fmt.Printf("Process took %s\n", timeTaken)
 	fmt.Scanf("h")
 }
@@ -66,14 +70,16 @@ func UpdateCave(cave1, cave2 string) {
 }
 
 func TraverseCaves(path []Cave, caveMap map[string]Cave, condition func([]Cave, map[string]Cave, string) bool) {
-	if path[len(path)-1].Name == "end" {
-		Solutions2 = append(Solutions2, path)
-		return
-	} else if len(path) > 200 {
+	if len(path) > 200 {
 		fmt.Printf("Aborting run as depth of 200 hit:\n%v\n", path)
 	}
 
 	for _, v := range Caves[path[len(path)-1].Name].Links {
+		if v == "end" {
+			Solutions2 = append(Solutions2, append(path, Caves[v]))
+			continue
+		}
+
 		if Caves[v].Big || condition(path, caveMap, v) {
 			cave := Caves[v]
 			caveLookup, present := caveMap[v]
